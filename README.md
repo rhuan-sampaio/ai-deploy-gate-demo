@@ -35,7 +35,7 @@ evidências anexadas e work notes de cada passo do pipeline.
 | Secret | `SN_INSTANCE` | `minhainstancia.service-now.com` |
 | Secret | `SN_USER` / `SN_PASS` | usuário de integração |
 | Variable | `SN_GATE_PATH` | `/api/cabs4/aict_gate/check` |
-| Variable | `AI_ASSET_TAG` | `AIS06266503406245446548` (B — Resumo de atendimento) |
+| Variable | `AI_ASSET_TAG` | `AIS13325836258511679488` (A — caminho feliz) |
 | Variable | `SN_ASSIGNMENT_GROUP` | `Change Management` (nome ou sys_id) |
 | Variable | `WAIT_MINUTES` | `30` (tempo máximo esperando a aprovação) |
 
@@ -48,10 +48,13 @@ Custo: o plano gratuito tem 2.000 min/mês em repositório privado; cada execuç
 
 | # | Execução | O que mostrar |
 |---|---|---|
-| 1 | Asset tag do **T1** (`AIS10911031685572882487`) | Pipeline para no job 2: a tabela mostra as regras 1, 4 e 5 bloqueando. **Nenhum Change é aberto** — a governança barra antes do ITSM. |
-| 2 | **B**, marcando *Simular avaliação reprovada* | Para no job 1: métrica fora do limite, nada chega ao ServiceNow. |
-| 3 | **B**, versão `1.4.0` | Jobs 1–3 verdes; o job 4 fica girando. Abra o CHG pelo link do Summary: descrição com o gate e as métricas, anexos, estado Assess. Aprove no ServiceNow (Assess e, conforme o modelo, Authorize). Volte ao GitHub: o job 4 conclui, o 5 revalida o gate, publica e fecha o Change. Mostre as work notes no ServiceNow. |
-| 4 (opcional) | **B** de novo e **rejeite** o Change | O job 4 falha com "rejeitado"; nada é publicado. |
+| 1 | **T1** (`AIS10911031685572882487`) | Para no job 2: regras 1, 4 e 5 bloqueando. **Nenhum Change é aberto** — a governança barra antes do ITSM. |
+| 2 | **B** (`AIS06266503406245446548`) | Para no job 2 só pela **regra 8**: 9 controles de LGPD/TEL sem atestação (3/12). Passa em tudo o mais, inclusive já está *Deployed* — compliance é exigido mesmo assim. |
+| 3 | **A** (`AIS13325836258511679488`) com *Simular avaliação reprovada* | Para no job 1: métrica fora do limite, nada chega ao ServiceNow. |
+| 4 | **A**, versão `1.4.0` | Jobs 1–3 verdes (12/12 controles conformes); o job 4 fica girando. Abra o CHG pelo link do Summary: descrição com o gate e as métricas, anexos, estado Assess. Aprove no ServiceNow (Assess e, conforme o modelo, Authorize). Volte ao GitHub: o job 4 conclui, o 5 revalida o gate, publica e fecha o Change. Mostre as work notes no ServiceNow. |
+| 5 (opcional) | **A** de novo e **rejeite** o Change | O job 4 falha com "rejeitado"; nada é publicado. |
+
+Variação longa: atestar os 9 controles do B (DPO: LGPD-01..04/07/08 conforme os donos; Jurídico: LGPD-05/06 e TEL-01) e rodar o B de novo para mostrar o bloqueio virando liberação.
 
 Bom ponto de discussão no passo 3: o gate é **revalidado** antes do deploy, porque a governança pode mudar
 durante a espera pela aprovação (ex.: o Uso e finalidade alterado dispara a regra 7).
