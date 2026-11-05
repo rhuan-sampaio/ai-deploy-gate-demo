@@ -79,3 +79,10 @@ durante a espera pela aprovação (ex.: o Uso e finalidade alterado dispara a re
 
 Em produção: trocar autenticação básica por OAuth (client credentials) e trocar a avaliação simulada pela
 execução real do conjunto de avaliação do modelo.
+
+## 6. Validação (05/11/2026)
+
+| Execução | AI System | Resultado |
+|---|---|---|
+| #1 | B — Resumo de atendimento | ⛔ Job 2: regra 8 (3/12 controles avaliados; 9 de LGPD/TEL sem atestação). Nenhum Change aberto. |
+| #2 | A — Agente de contestação | ✅ 5/5 jobs em 6m38s: Change aberto, aprovado no ServiceNow (espera de 5m26s), gate revalidado, deploy e Change fechado. |
