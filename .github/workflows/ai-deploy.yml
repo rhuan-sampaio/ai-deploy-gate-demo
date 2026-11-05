@@ -1,0 +1,131 @@
+name: Deploy de AI System — governança AI Control Tower
+
+on:
+  workflow_dispatch:
+    inputs:
+      asset_tag:
+        description: "Asset tag do AI System (vazio = variável AI_ASSET_TAG do repositório)"
+        required: false
+        default: ""
+      versao:
+        description: "Versão a publicar"
+        required: true
+        default: "1.4.0"
+      simular_falha_avaliacao:
+        description: "Simular avaliação do modelo reprovada"
+        type: boolean
+        default: false
+
+run-name: "Deploy ${{ inputs.versao }} · ${{ inputs.asset_tag || vars.AI_ASSET_TAG }}"
+
+concurrency:
+  group: deploy-${{ inputs.asset_tag || vars.AI_ASSET_TAG }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  SN_INSTANCE: ${{ secrets.SN_INSTANCE }}
+  SN_USER: ${{ secrets.SN_USER }}
+  SN_PASS: ${{ secrets.SN_PASS }}
+  SN_GATE_PATH: ${{ vars.SN_GATE_PATH }}
+  SN_ASSIGNMENT_GROUP: ${{ vars.SN_ASSIGNMENT_GROUP }}
+  AI_ASSET_TAG: ${{ inputs.asset_tag || vars.AI_ASSET_TAG }}
+  VERSAO: ${{ inputs.versao }}
+  RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+  OUT_DIR: out
+
+jobs:
+  avaliacao:
+    name: "1 · Avaliação do modelo"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Métricas de qualidade e segurança
+        env:
+          SIMULAR_FALHA: ${{ inputs.simular_falha_avaliacao }}
+        run: bash scripts/eval.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: avaliacao, path: out/eval-report.json, if-no-files-found: ignore }
+
+  gate:
+    name: "2 · Gate AI Control Tower"
+    needs: avaliacao
+    runs-on: ubuntu-latest
+    outputs:
+      ai_system: ${{ steps.gate.outputs.ai_system }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Consulta as 8 regras de governança
+        id: gate
+        run: bash scripts/gate.sh "Gate de governança — AI Control Tower"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: gate, path: out/gate-result.json, if-no-files-found: ignore }
+
+  change:
+    name: "3 · Change Request (ITSM)"
+    needs: gate
+    runs-on: ubuntu-latest
+    outputs:
+      sys_id: ${{ steps.chg.outputs.sys_id }}
+      number: ${{ steps.chg.outputs.number }}
+      url: ${{ steps.chg.outputs.url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { path: out, merge-multiple: true }
+      - name: Abre o Normal Change com as evidências
+        id: chg
+        run: bash scripts/change.sh create
+
+  aprovacao:
+    name: "4 · Aprovação do Change"
+    needs: change
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    env:
+      CHANGE_SYS_ID: ${{ needs.change.outputs.sys_id }}
+      WAIT_MINUTES: ${{ vars.WAIT_MINUTES || '30' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: "Aguardando aprovação de ${{ needs.change.outputs.number }} no ServiceNow"
+        run: bash scripts/change.sh wait
+
+  deploy:
+    name: "5 · Deploy em produção"
+    needs: [gate, change, aprovacao]
+    runs-on: ubuntu-latest
+    env:
+      CHANGE_SYS_ID: ${{ needs.change.outputs.sys_id }}
+      AI_SYSTEM: ${{ needs.gate.outputs.ai_system }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Revalida o gate (a governança pode ter mudado durante a aprovação)
+        env:
+          GATE_FILE: out/gate-revalidacao.json
+        run: bash scripts/gate.sh "Revalidação do gate antes do deploy"
+      - name: Change em Implement
+        run: bash scripts/change.sh implement
+      - name: Publica o AI System (simulado)
+        run: |
+          mkdir -p dist
+          jq -n --arg s "$AI_SYSTEM" --arg t "$AI_ASSET_TAG" --arg v "$VERSAO" \
+                --arg c "${{ needs.change.outputs.number }}" --arg r "$RUN_URL" \
+                '{ai_system: $s, asset_tag: $t, versao: $v, change: $c, pipeline: $r, publicado_em: (now | todate)}' > dist/release.json
+          echo "Publicando $AI_SYSTEM v$VERSAO..."; sleep 8
+          cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+          ### 🚀 Em produção: $AI_SYSTEM v$VERSAO
+
+          Autorizado pelo gate do AI Control Tower e pelo Change [${{ needs.change.outputs.number }}](${{ needs.change.outputs.url }}).
+
+          EOF
+      - uses: actions/upload-artifact@v4
+        with: { name: "release-${{ inputs.versao }}", path: dist/release.json }
+      - name: Fecha o Change
+        run: bash scripts/change.sh close
+      - name: Encerra o Change se o deploy falhar
+        if: failure()
+        run: bash scripts/change.sh fail "Deploy abortado (gate revalidado bloqueou ou falha na publicação)."

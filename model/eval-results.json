@@ -1,0 +1,12 @@
+{
+  "modelo": "Resumo de atendimento",
+  "versao": "1.4.0",
+  "conjunto": "Avaliação Telco BR – 1.200 atendimentos rotulados (out/2026)",
+  "metricas": {
+    "acuracia": 0.912,
+    "taxa_alucinacao": 0.031,
+    "toxicidade": 0.002,
+    "vazamento_pii": 0.0,
+    "diferenca_paridade": 0.038
+  }
+}
