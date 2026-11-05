@@ -32,8 +32,8 @@ evidências anexadas e work notes de cada passo do pipeline.
 
 | Tipo | Nome | Exemplo |
 |---|---|---|
-| Secret | `SN_INSTANCE` | `minhainstancia.service-now.com` |
 | Secret | `SN_USER` / `SN_PASS` | usuário de integração |
+| Variable | `SN_INSTANCE` | `minhainstancia.service-now.com` (variable, não secret: o GitHub mascara secrets como `***` e quebraria os links do Change) |
 | Variable | `SN_GATE_PATH` | `/api/cabs4/aict_gate/check` |
 | Variable | `AI_ASSET_TAG` | `AIS13325836258511679488` (A — caminho feliz) |
 | Variable | `SN_ASSIGNMENT_GROUP` | `Change Management` (nome ou sys_id) |
@@ -67,6 +67,7 @@ durante a espera pela aprovação (ex.: o Uso e finalidade alterado dispara a re
 | Change fica em Assess sem aprovador | Grupo de atribuição sem membros ou sem gerente, conforme a política de aprovação Normal. |
 | HTTP 403 no gate | Falta a role `sn_ai_governance.integration.rest` no usuário de integração. |
 | HTTP 403 no Change | Falta `itil` (ou ACL restritiva em `change_request`). |
+| Link do Change abre `https://***/...` | `SN_INSTANCE` cadastrado como secret; mova para Variables e apague o secret |
 | Change não fecha sozinho | Política de fechamento exige campos extras; feche manualmente — a URL da execução está nas notas. |
 
 ## 5. Arquivos

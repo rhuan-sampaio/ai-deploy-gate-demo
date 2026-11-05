@@ -13,7 +13,7 @@ source "$(dirname "$0")/lib.sh"
 T=/api/now/table/change_request
 RUN_URL=${RUN_URL:-local}
 
-chg_url() { echo "$SN_BASE_URL/nav_to.do?uri=$(urlenc "change_request.do?sys_id=$1")"; }
+chg_url() { echo "$SN_BASE_URL/now/sow/record/change_request/$1"; }   # Service Operations Workspace
 patch()   { sn PATCH "$T/$CHANGE_SYS_ID?sysparm_fields=number,state,approval" "$1"; }
 le()      { sn GET "$T/$CHANGE_SYS_ID?sysparm_fields=number,state,approval" | jq -c '.result'; }
 nota()    { patch "$(jq -n --arg n "$1" '{work_notes: $n}')" > /dev/null || echo "::warning::Não foi possível gravar a work note"; }

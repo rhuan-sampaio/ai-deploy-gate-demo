@@ -26,7 +26,7 @@ permissions:
   contents: read
 
 env:
-  SN_INSTANCE: ${{ secrets.SN_INSTANCE }}
+  SN_INSTANCE: ${{ vars.SN_INSTANCE }}   # variable, não secret: secret é mascarado como *** nos links
   SN_USER: ${{ secrets.SN_USER }}
   SN_PASS: ${{ secrets.SN_PASS }}
   SN_GATE_PATH: ${{ vars.SN_GATE_PATH }}
