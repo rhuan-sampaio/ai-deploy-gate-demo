@@ -1,5 +1,5 @@
 {
-  "modelo": "Resumo de atendimento",
+  "modelo": "Resumo de atendimento para supervisores",
   "versao": "1.4.0",
   "conjunto": "Avaliação Telco BR – 1.200 atendimentos rotulados (out/2026)",
   "metricas": {

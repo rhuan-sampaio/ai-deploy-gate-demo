@@ -1,0 +1,12 @@
+{
+  "modelo": "Customer service case helper",
+  "versao": "1.4.0",
+  "conjunto": "Avaliação Telco BR – 600 casos de atendimento com resolução conhecida (out/2026)",
+  "metricas": {
+    "acuracia": 0.874,
+    "taxa_alucinacao": 0.038,
+    "toxicidade": 0.003,
+    "vazamento_pii": 0.0,
+    "diferenca_paridade": 0.046
+  }
+}

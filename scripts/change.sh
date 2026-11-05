@@ -40,13 +40,23 @@ create() {
     corpo=$(jq -n --slurpfile g "$gate" --slurpfile e "$evalr" \
       --arg tag "${AI_ASSET_TAG:-}" --arg ver "${VERSAO:-}" --arg run "$RUN_URL" --arg corr "$corr" --arg grupo "$grupo" \
       --arg ini "$(date -u -d '+10 min' '+%Y-%m-%d %H:%M:%S')" --arg fim "$(date -u -d '+70 min' '+%Y-%m-%d %H:%M:%S')" '
-      ($g[0]) as $g | ($e[0]) as $e | ($g.ai_system // $tag) as $sis
+      ($g[0]) as $g | ($e[0]) as $e
+      # Display name do AI Control Tower termina com a versão registrada ("Agente X 0.1.0")
+      | (($g.ai_system // $tag) | capture("^(?<nome>.*?)\\s+v?(?<v>[0-9]+(\\.[0-9]+)+)$") // {nome: ($g.ai_system // $tag), v: null}) as $id
+      | $id.nome as $sis
+      | (if $id.v then "\($id.v) → \($ver)" else $ver end) as $versoes
+      # Risco do AI System (1 High, 2 Medium, 3 Low, 6 Critical) -> risco e impacto do Change
+      | (($g.checks.risk_classification // "") | capture("^(?<c>[0-9]+)").c // "") as $rc
+      | ({"6": {risk: "1", impact: "1", rotulo: "Critical"}, "1": {risk: "2", impact: "1", rotulo: "High"},
+          "2": {risk: "3", impact: "2", rotulo: "Medium"},   "3": {risk: "4", impact: "3", rotulo: "Low"}}[$rc] // null) as $rk
       | {
           type: "normal", category: "Software",
-          short_description: "Deploy do AI System \($sis) v\($ver) (pipeline GitHub Actions)",
+          short_description: "Deploy do AI System \($sis) \($versoes) (pipeline GitHub Actions)",
           description: ([
             "Deploy solicitado pelo pipeline: \($run)", "",
-            "AI System: \($sis)", "Asset tag: \($tag)", "Versão: \($ver)", "",
+            "AI System: \($sis)", "Asset tag: \($tag)",
+            "Versão: \(if $id.v then "registrada no AI Control Tower \($id.v), nova \($ver)" else $ver end)",
+            "Risco e impacto do Change herdados da classificação do AI System: \($rk.rotulo // "não mapeado")", "",
             "GATE AI CONTROL TOWER: \(if $g.allowed then "LIBERADO" else "BLOQUEADO" end) em \($g.evaluated_at // "-")",
             "  Status do ciclo de vida: \($g.checks.lifecycle_status // "-")",
             "  Classificação de risco: \($g.checks.risk_classification // "-")",
@@ -63,7 +73,9 @@ create() {
           risk_impact_analysis: "Risco do AI System no AI Control Tower: \($g.checks.risk_classification // "-"). Sub-aprovações de Privacidade e Jurídico concluídas.",
           start_date: $ini, end_date: $fim,
           correlation_id: $corr, correlation_display: "GitHub Actions"
-        } + (if $grupo != "" then {assignment_group: $grupo} else {} end)')
+        }
+        + (if $rk then {risk: $rk.risk, impact: $rk.impact} else {} end)
+        + (if $grupo != "" then {assignment_group: $grupo} else {} end)')
     local criado
     criado=$(sn POST "$T?sysparm_fields=sys_id,number,state" "$corpo" | jq -c '.result')
     CHANGE_SYS_ID=$(jq -r '.sys_id' <<<"$criado")
@@ -85,12 +97,17 @@ create() {
   local num url st
   num=$(jq -r '.number' <<<"$atual"); url=$(chg_url "$CHANGE_SYS_ID"); st=$(estado "$(jq -r '.state' <<<"$atual")")
   output sys_id "$CHANGE_SYS_ID"; output number "$num"; output url "$url"
+  local info
+  info=$(sn GET "$T/$CHANGE_SYS_ID?sysparm_display_value=true&sysparm_fields=short_description,risk,impact" | jq -c '.result' || echo '{}')
   summary <<EOF
 ### 📋 Change Request aberto: [$num]($url)
+
+$(jq -r '.short_description // ""' <<<"$info")
 
 | | |
 |---|---|
 | Tipo | Normal |
+| Risco · Impacto | $(jq -r '"\(.risk // "-") · \(.impact // "-")"' <<<"$info") — herdados da classificação do AI System ($(jq -r '.checks.risk_classification // "-"' "$gate")) |
 | Estado | **$st** — aguardando aprovação no ServiceNow |
 | Janela planejada | $(date -u -d '+10 min' '+%d/%m %H:%M') – $(date -u -d '+70 min' '+%H:%M') UTC |
 | Evidências anexadas | gate-result.json · eval-report.json |
@@ -158,7 +175,8 @@ implement() {
 }
 
 close_ok() {
-  local notas="AI System ${AI_SYSTEM:-$AI_ASSET_TAG} v${VERSAO:-} publicado com sucesso pelo pipeline. Gate do AI Control Tower revalidado antes do deploy. Execução: $RUN_URL"
+  local nome; nome=$(sed -E 's/ v?[0-9]+(\.[0-9]+)+$//' <<<"${AI_SYSTEM:-$AI_ASSET_TAG}")
+  local notas="AI System $nome ${VERSAO:-} publicado com sucesso pelo pipeline. Gate do AI Control Tower revalidado antes do deploy. Execução: $RUN_URL"
   patch "$(jq -n --arg n "$notas" '{state: "0", work_notes: $n}')" > /dev/null || echo "::warning::Transição para Review recusada"
   patch "$(jq -n --arg n "$notas" '{state: "3", close_code: "successful", close_notes: $n}')" > /dev/null ||
     echo "::warning::Não foi possível fechar o Change automaticamente; feche-o no ServiceNow"

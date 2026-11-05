@@ -1,0 +1,12 @@
+{
+  "modelo": "Agente de contestação de fatura",
+  "versao": "1.4.0",
+  "conjunto": "Avaliação Telco BR – 850 contestações de fatura com decisão revisada por analista (out/2026)",
+  "metricas": {
+    "acuracia": 0.893,
+    "taxa_alucinacao": 0.024,
+    "toxicidade": 0.001,
+    "vazamento_pii": 0.0,
+    "diferenca_paridade": 0.041
+  }
+}

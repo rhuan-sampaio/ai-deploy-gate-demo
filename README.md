@@ -72,9 +72,9 @@ durante a espera pela aprovação (ex.: o Uso e finalidade alterado dispara a re
 ## 5. Arquivos
 
 - `.github/workflows/ai-deploy.yml` — os 5 jobs
-- `scripts/eval.sh` — avaliação (simulada) com `model/eval-results.json` e `model/thresholds.json`
+- `scripts/eval.sh` — avaliação (simulada): métricas em `model/<asset tag>.json`, limites em `model/thresholds.json` (AI System sem arquivo não passa)
 - `scripts/gate.sh` — consulta o gate e monta a tabela das 8 regras (evolução do `deploy-gate.sh`)
-- `scripts/change.sh` — `create`, `wait`, `implement`, `note`, `close`, `fail`
+- `scripts/change.sh` — `create`, `wait`, `implement`, `note`, `close`, `fail`. O risco e o impacto do Change são herdados da classificação do AI System (Critical → Very High/1, High → High/1, Medium → Moderate/2, Low → Low/3)
 - `scripts/lib.sh` — chamadas REST, resumo do job e saídas
 
 Em produção: trocar autenticação básica por OAuth (client credentials) e trocar a avaliação simulada pela

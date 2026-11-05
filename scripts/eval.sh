@@ -6,13 +6,20 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 source scripts/lib.sh
 
-metricas=$(jq '.metricas' model/eval-results.json)
+# Métricas da avaliação de cada AI System: model/<asset tag>.json
+RES=model/${AI_ASSET_TAG:-sem-asset-tag}.json
+if [ ! -f "$RES" ]; then
+  echo "::error::Sem resultado de avaliação para o AI System ${AI_ASSET_TAG:-?} (esperado: $RES)"
+  printf '### ⛔ Avaliação do modelo\n\nNão há resultado de avaliação para o asset tag `%s` (arquivo `%s`). Nenhum deploy sem avaliação.\n' "${AI_ASSET_TAG:-?}" "$RES" | summary
+  exit 1
+fi
+metricas=$(jq '.metricas' "$RES")
 if [ "${SIMULAR_FALHA:-false}" = "true" ]; then
   echo "::warning::Simulando avaliação reprovada (acurácia e alucinação degradadas)"
   metricas=$(echo "$metricas" | jq '.acuracia = 0.821 | .taxa_alucinacao = 0.114')
 fi
 
-jq -n --argjson m "$metricas" --slurpfile lim model/thresholds.json --slurpfile res model/eval-results.json '
+jq -n --argjson m "$metricas" --slurpfile lim model/thresholds.json --slurpfile res "$RES" '
   {modelo: $res[0].modelo, versao: (env.VERSAO // $res[0].versao), conjunto: $res[0].conjunto,
    avaliado_em: (now | todate),
    metricas: [ $lim[0] | to_entries[] | .key as $k | .value as $v | $m[$k] as $x |

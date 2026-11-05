@@ -112,12 +112,13 @@ jobs:
       - name: Publica o AI System (simulado)
         run: |
           mkdir -p dist
+          NOME=$(sed -E 's/ v?[0-9]+(\.[0-9]+)+$//' <<<"$AI_SYSTEM")
           jq -n --arg s "$AI_SYSTEM" --arg t "$AI_ASSET_TAG" --arg v "$VERSAO" \
                 --arg c "${{ needs.change.outputs.number }}" --arg r "$RUN_URL" \
                 '{ai_system: $s, asset_tag: $t, versao: $v, change: $c, pipeline: $r, publicado_em: (now | todate)}' > dist/release.json
-          echo "Publicando $AI_SYSTEM v$VERSAO..."; sleep 8
+          echo "Publicando $NOME $VERSAO..."; sleep 8
           cat >> "$GITHUB_STEP_SUMMARY" <<EOF
-          ### 🚀 Em produção: $AI_SYSTEM v$VERSAO
+          ### 🚀 Em produção: $NOME $VERSAO
 
           Autorizado pelo gate do AI Control Tower e pelo Change [${{ needs.change.outputs.number }}](${{ needs.change.outputs.url }}).
 
