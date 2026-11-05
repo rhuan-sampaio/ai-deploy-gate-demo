@@ -9,7 +9,26 @@ TITULO=${1:-Gate de governança — AI Control Tower}
 : "${SN_GATE_PATH:?defina SN_GATE_PATH (ex.: /api/cabs4/aict_gate/check)}" "${AI_ASSET_TAG:?defina AI_ASSET_TAG}"
 GATE_FILE=${GATE_FILE:-$OUT/gate-result.json}
 
-sn GET "${SN_GATE_PATH}?asset_tag=$(urlenc "$AI_ASSET_TAG")" | jq '.result' > "$GATE_FILE"
+if ! RESP=$(sn GET "${SN_GATE_PATH}?asset_tag=$(urlenc "$AI_ASSET_TAG")" 2> "$OUT/gate-erro.txt"); then
+  ERRO=$(sed 's/^::error:://' "$OUT/gate-erro.txt")
+  echo "::error::$ERRO"
+  summary <<EOF
+### ⚠️ $TITULO — não foi possível consultar o ServiceNow
+
+\`$ERRO\`
+
+| Erro | O que verificar |
+|---|---|
+| \`defina SN_...\` | Secret ou variable não cadastrado(a) no repositório |
+| HTTP 401 | \`SN_USER\` / \`SN_PASS\` incorretos, ou usuário bloqueado/sem *Web service access* |
+| HTTP 403 | Usuário sem a role \`sn_ai_governance.integration.rest\` |
+| HTTP 404 | \`SN_GATE_PATH\` errado (confira o *Base API path* do Scripted REST API) |
+| Sem conexão | \`SN_INSTANCE\` errado (use só o host, ex.: \`minhainstancia.service-now.com\`) ou instância hibernando |
+
+EOF
+  exit 1
+fi
+echo "$RESP" | jq '.result' > "$GATE_FILE"
 
 jq -r --arg titulo "$TITULO" --arg tag "$AI_ASSET_TAG" '
   . as $r
