@@ -47,7 +47,7 @@ create() {
       | (if $id.v then "\($id.v) → \($ver)" else $ver end) as $versoes
       # Risco do AI System (1 High, 2 Medium, 3 Low, 6 Critical) -> risco e impacto do Change
       | (($g.checks.risk_classification // "") | capture("^(?<c>[0-9]+)").c // "") as $rc
-      | ({"6": {risk: "1", impact: "1", rotulo: "Critical"}, "1": {risk: "2", impact: "1", rotulo: "High"},
+      | ({"6": {risk: "2", impact: "1", rotulo: "Critical"}, "1": {risk: "2", impact: "1", rotulo: "High"},
           "2": {risk: "3", impact: "2", rotulo: "Medium"},   "3": {risk: "4", impact: "3", rotulo: "Low"}}[$rc] // null) as $rk
       | {
           type: "normal", category: "Software",
